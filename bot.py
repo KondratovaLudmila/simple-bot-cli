@@ -5,34 +5,22 @@ contacts = {}
 def input_error(handler):
     
     def _wrapper(*args):
-        """Check arguments and handles exceptions"""
+        """Handles user input exceptions"""
         
-        if args[0] == "":
-            message = "I can not take an empty name!"
-        elif len(args) > 1 and not check_phone(args[1]):
-            message = "You have entered an incorrect phone number"
-        else:
-            try:
-                message = handler(*args)
-            except TypeError:
-                message = "Please give me name and phone number"
-            except KeyError:
-                message = "There is no contact with such name. \
-                            Use 'show all' command to view your contact list"
+        try:
+            message = handler(*args)
+        except TypeError:
+            if len(args) == 0:
+                message = "Please give me name"
+            else:
+                message = "Please give me phone number"
+        except KeyError:
+            message = "There is no contact with such name. \
+                        Use 'show all' command to view your contact list"
 
         return message
     
     return _wrapper
-
-def check_phone(phone: str) -> bool:
-    """Checks if the phone number contains 10 or 12 digits"""
-
-    digit_phone = ""
-    for ch in phone:
-        if ch.isdigit():
-            digit_phone += ch
-    
-    return len(digit_phone) == 10 or len(digit_phone) == 12
 
 def start_bot() -> str:
     """Just say hello"""
@@ -45,7 +33,7 @@ def start_bot() -> str:
 def add_contact(name: str, phone: str) -> str:
     """Add new record to contact list"""
     
-    if contacts.get(name):
+    if name in contacts:
         message = "A contact with the sanme name already exists!"
     else:
         contacts[name] = phone
@@ -145,7 +133,6 @@ def main():
             message = handler(*params)
         
         print(message)
-        
         
 if __name__ == "__main__":
     
