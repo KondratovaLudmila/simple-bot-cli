@@ -8,16 +8,29 @@ def command_parcer(input_message: str) -> tuple:
     
     message = input_message.lower()
     handler = None
-    params = None
+    params = []
+    params_dict = {}
     
     for cmd, fnc in HANDLER_DICT.items():
         pos = message.find(cmd)
         
         if pos != -1:
             if not cmd in ("hello", "show all", "exit", "good bye", "close"):
-                params = input_message[pos + len(cmd) + 1:].split(" ")
+                cut_message = input_message[pos + len(cmd) + 1:]
+                if cut_message:
+                    params = cut_message.split(" ")
             if cmd in ("add", "delete phone", "new phone"):
                 params = params[:2]
+            elif cmd == "find":
+                params = params[:2]
+                params_dict = {}
+                for param in params:
+                    try:
+                        key, value = param.split("=")
+                    except ValueError:
+                        continue
+                    params_dict[key] = value
+                    params.remove(param)
             elif cmd in ("phones", "remove"):
                 params = params[:1]
             elif cmd == "edit phone":
@@ -26,7 +39,7 @@ def command_parcer(input_message: str) -> tuple:
             handler = fnc
             break
         
-    return handler, params
+    return handler, params, params_dict
      
 
 def main():
@@ -36,15 +49,13 @@ def main():
 
         user_input = input()
         
-        handler, params = command_parcer(user_input)
+        handler, args, kwargs = command_parcer(user_input)
         
-        if handler is None:
+        if not handler:
             message = "I didn\'t catch you! Please enter one of the " \
                         f"following commands: {', '.join(HANDLER_DICT.keys())}"
-        elif params is None:
-            message = handler()
         else:
-            message = handler(*params)
+            message = handler(*args, **kwargs)
         
         print(message)
         

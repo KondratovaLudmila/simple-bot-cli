@@ -62,7 +62,21 @@ class AddressBook(UserDict):
     def get_record(self, name: str) -> Record:
         return self.data[name]
 
+    def find_records(self, name=None, phone=None) -> list:
+        record_list = []
+        record = None
+        matching = False
 
-    
+        for record in self.values():
+            matching = not name or record.name.value == name
+            matching = matching and not phone or \
+                        not record.get_phone(phone) is None
+            
+            if matching:
+                record_list.append(record)
 
-    
+            if name and matching:
+                break
+        
+        return record_list
+

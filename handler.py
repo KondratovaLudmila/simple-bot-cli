@@ -52,6 +52,19 @@ def delete_contact(name: str) -> str:
     message = f"Contact {name} was successfully deleted!"
     return message
 
+def find_contact(name=None, phone=None) -> str:
+    """Searching contacts by given parameters.
+    Example 1: find name=Vasya phone=1111
+    Example 2: find Vasya 1234"""
+
+    print(name, phone)
+    contact_list = contacts.find_records(name, phone)
+    if contact_list:
+        message = show_contacts(contact_list)
+    else:
+        message = "Didn't find anything!"
+    return message
+
 @input_error
 def add_phone(name: str, phone: str) -> str:
 
@@ -90,21 +103,25 @@ def show_phone(name: str) -> str:
     
     return message
 
-def show_all_contacts() -> str:
-    """Shows all contacts in list in
+def show_contacts(user_contacts=None) -> str:
+    """Shows contacts given in user_contacts.
+    If not any parameter given shows all contacts
+    return str in phormat:
         |  Name  |  Phone  | 
-    table
     """
 
     name_width = 10
     phone_width = 15
+
+    contact_list = user_contacts if user_contacts else list(contacts.data.values())
+
     
-    for contact in contacts.data.values():
+    for contact in contact_list:
         name_width = max(len(contact.name.value), name_width)
         
     message = "|" + "Name".center(name_width) + "|" + "Phone".center(phone_width) + "|\n"
     
-    for contact in contacts.data.values():
+    for contact in contact_list:
         name = contact.name.value
         message += "|" + name.ljust(name_width) + "|"
 
@@ -127,11 +144,12 @@ def finish_bot() -> str:
 HANDLER_DICT = {"hello": start_bot,
                  "add": add_contact,
                  "remove": delete_contact,
+                 "find": find_contact,
                  "edit phone": edit_phone,
                  "delete phone": delete_phone,
                  "new phone": add_phone,
                  "phones": show_phone,
-                 "show all": show_all_contacts,
+                 "show all": show_contacts,
                  "exit": finish_bot,
                  "good bye": finish_bot,
                  "close": finish_bot}
