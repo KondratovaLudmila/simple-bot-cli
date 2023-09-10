@@ -22,7 +22,7 @@ def command_parcer(input_message: str) -> tuple:
             if cmd in ("add", "delete phone", "new phone"):
                 params = params[:2]
             elif cmd == "find":
-                params = params[:2]
+                params = params[:1]
                 params_dict = {}
                 for param in params:
                     try:
