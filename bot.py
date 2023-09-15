@@ -1,5 +1,6 @@
-from handler import HANDLER_DICT, EXIT_MESSAGE
+from handler import HANDLER_DICT, EXIT_MESSAGE, input_error
 
+@input_error
 def command_parcer(input_message: str) -> tuple:
     """Finds a command word in user text.
     If command takes any parameters they must 
@@ -15,31 +16,34 @@ def command_parcer(input_message: str) -> tuple:
         pos = message.find(cmd)
         
         if pos != -1:
-            if not cmd in ("hello", "show all", "exit", "good bye", "close"):
-                cut_message = input_message[pos + len(cmd) + 1:]
-                if cut_message:
-                    params = cut_message.split(" ")
-            if cmd in ("add", "delete phone", "new phone"):
+            cut_message = input_message[pos + len(cmd) + 1:]
+            if cut_message:
+                params = cut_message.split(" ")
+            
+            if cmd in ("delete phone", "new phone"):
                 params = params[:2]
-            elif cmd == "find":
+            
+            elif cmd == "show all":
                 params = params[:1]
-                params_dict = {}
-                for param in params:
-                    try:
-                        key, value = param.split("=")
-                    except ValueError:
-                        continue
-                    params_dict[key] = value
-                    params.remove(param)
-            elif cmd in ("phones", "remove"):
+                if params and params[0].isdigit():
+                    params[0] = int(params[0])
+                elif params and not params[0].isdigit():
+                    raise ValueError("Number of records per page must be positive integer value")
+
+            elif cmd in ("phones", "remove", "find"):
                 params = params[:1]
-            elif cmd == "edit phone":
+            
+            elif cmd in ("edit phone", "add"):
                 params = params[:3]
             
             handler = fnc
             break
-        
-    return handler, params, params_dict
+    
+    if handler is None:
+        raise ValueError("I didn\'t catch you! Please enter one of the " 
+                         f"following commands: {', '.join(HANDLER_DICT.keys())}")
+    else:
+        return handler(*params, **params_dict)
      
 
 def main():
@@ -49,13 +53,7 @@ def main():
 
         user_input = input()
         
-        handler, args, kwargs = command_parcer(user_input)
-        
-        if not handler:
-            message = "I didn\'t catch you! Please enter one of the " \
-                        f"following commands: {', '.join(HANDLER_DICT.keys())}"
-        else:
-            message = handler(*args, **kwargs)
+        message = command_parcer(user_input)
         
         print(message)
         
