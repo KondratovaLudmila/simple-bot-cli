@@ -1,5 +1,6 @@
 from collections import UserDict
 from datetime import datetime
+from pickle import dump, load
 
 DATE_FORMAT = "%d.%m.%Y"
 
@@ -65,15 +66,15 @@ class Record:
                         f"phones: {'; '.join(p.value for p in self.phones)}, "\
                         f"birthday: {self.birthday if self.birthday else ''}"
         
-    def find_phone(self, value: str) -> Phone:
+    def find_phone(self, value: str, strict=True) -> Phone:
         result = None
         for phone in self.phones:
-            if phone.value == value:
+            if phone.value == value or \
+                    not strict and phone.value.find(value) != -1:
+                
                 result = phone
                 break
-        
-        if not result:
-            raise ValueError("Phone not found")
+
         return result
 
     def add_phone(self, phone: str) -> None:
@@ -84,12 +85,16 @@ class Record:
         phone = self.find_phone(value)
         if phone:
             self.phones.remove(phone)
+        else:
+            raise ValueError("Phone doesn't exist")
         
 
     def edit_phone(self, old_value: str, new_value: str) -> None:
         phone = self.find_phone(old_value)
         if phone:
             phone.value = new_value
+        else:
+            raise ValueError("Phone doesn't exist")
     
     def add_birthday(self, birthday: str):
         if birthday:
@@ -132,9 +137,16 @@ class Pagination:
         raise StopIteration
 
 class AddressBook(UserDict):
-    def __init__(self):
-        self.pagination = None
+
+    DEFAULT_FILE = "book.bin"
+
+    def __init__(self, file: str = None):
         super().__init__()
+        self.pagination = None
+        if file is None:
+            file = self.DEFAULT_FILE
+        self.file = file
+        self.restore()
         
     def add_record(self, record: Record) -> None:
         if record.name.value in self.data:
@@ -145,10 +157,28 @@ class AddressBook(UserDict):
         if name in self.data:
             return self.data.pop(name)
 
-    def find(self, name: str) -> Record:
-        return self.data.get(name)
+    def find(self, search: str) -> Record:
+        records = []
+        for name, record in self.data.items():
+            pos = name.find(search)
+            if pos != -1:
+                records.append(record)
+            elif record.find_phone(search, strict=False):
+                records.append(record)
+
+        return records
     
     def iterator(self, records_per_page=None):
         records = [self.data[key] for key in self.data]
         return Pagination(records, records_per_page)
 
+    def save(self):
+        with open(self.file, "wb") as f:
+            dump(self.data, f)
+
+    def restore(self):
+        try:
+            with open(self.file, "rb") as f:
+                self.data = load(f)
+        except:
+            self.data = {}

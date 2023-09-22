@@ -51,9 +51,9 @@ def delete_contact(name: str) -> str:
 def find_contact(search: str) -> str:
     """Searching contacts by given string"""
 
-    contact = contacts.find(search)
-    if contact:
-        message = str(contact)
+    records = [str(cnt) for cnt in contacts.find(search)]
+    if records:
+        message = "\n".join(records)
     else:
         message = "Didn't find anything!"
     return message
@@ -121,7 +121,7 @@ def days_to_birthday(name: str) -> int:
 
 def finish_bot() -> str:
     """Just say good bye"""
-    
+    contacts.save()
     return EXIT_MESSAGE
 
 def next_page():
