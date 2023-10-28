@@ -1,8 +1,35 @@
 from collections import UserDict
 from datetime import datetime
 from pickle import dump, load
+from abc import abstractmethod, ABC
+from re import search
 
-DATE_FORMAT = "%d.%m.%Y"
+class Target(ABC):
+    pagination = None
+    
+    @abstractmethod
+    def add(self):
+        """Adding record"""
+    
+    @abstractmethod
+    def delete(self):
+        """Delete record"""
+    
+    @abstractmethod
+    def find(self):
+        """Finding record"""
+
+    @abstractmethod
+    def save(self):
+        """Saving changes"""
+    
+    @abstractmethod
+    def restore(self):
+        """Restoring racords"""
+
+    @abstractmethod
+    def iterator(self):
+        """Iteration by records"""
 
 class Field:
     def __init__(self, value, required=False):
@@ -39,32 +66,51 @@ class Phone(Field):
         return is_valid
 
 class Birthday(Field):
+    DATE_FORMAT = "%d.%m.%Y"
+
     def __str__(self):
         if self.value:
-            return datetime.strftime(self.value, DATE_FORMAT)
+            return datetime.strftime(self.value, self.DATE_FORMAT)
         else:
             return ""
 
     @Field.value.setter
     def value(self, new_value: str):
-        date_value = datetime.strptime(new_value, DATE_FORMAT).date()
+        date_value = datetime.strptime(new_value, self.DATE_FORMAT).date()
         if date_value > datetime.now().date():
             raise ValueError("Date of birth can not be in the future!")
         else:
             self._value = date_value
 
+class Email(Field):
+    def __str__(self):
+        if self.value is None:
+            return ""
+        else:
+            return self.value
+
+    @Field.value.setter
+    def value(self, new_value: str):
+        if search(r"^[\w+\.]+@([\w-]+\.)+[\w+]{2,4}$", new_value):
+            self._value = new_value
+        else:
+            raise ValueError("Give me correct email")
+
 class Record:
-    def __init__(self, name: str, phone=None, birthday=None):
-        self.name = Name(name, required=True)
+    def __init__(self, name: Name, phone: Phone=None, birthday: Birthday=None, email: Email=None):
+        self.name = name
         self.phones = []
         self.add_phone(phone)
         self.birthday = None
         self.add_birthday(birthday)
+        self.email = None
+        self.add_email(email)
 
     def __str__(self) -> str:
         return f"Contact name: {self.name.value}, "\
                         f"phones: {'; '.join(p.value for p in self.phones)}, "\
-                        f"birthday: {self.birthday if self.birthday else ''}"
+                        f"birthday: {self.birthday if self.birthday else ''}"\
+                        f"email: {self.email}"
         
     def find_phone(self, value: str, strict=True) -> Phone:
         result = None
@@ -77,9 +123,9 @@ class Record:
 
         return result
 
-    def add_phone(self, phone: str) -> None:
+    def add_phone(self, phone: Phone) -> None:
         if phone:
-            self.phones.append(Phone(phone))
+            self.phones.append(phone)
         
     def remove_phone(self, value: str) -> None:
         phone = self.find_phone(value)
@@ -96,9 +142,9 @@ class Record:
         else:
             raise ValueError("Phone doesn't exist")
     
-    def add_birthday(self, birthday: str):
+    def add_birthday(self, birthday: Birthday):
         if birthday:
-            self.birthday = Birthday(birthday)
+            self.birthday = birthday
 
     def days_to_birthday(self) -> int:
         if self.birthday:
@@ -113,6 +159,10 @@ class Record:
             delta = new_birthday - cur_date
             
             return delta.days
+        
+    def add_email(self, email: Email):
+        if email:
+            self.email = email
 
 class Pagination:
     DEFAULT_PER_PAGE = 3
@@ -137,25 +187,31 @@ class Pagination:
         raise StopIteration
 
 class AddressBook(UserDict):
+    def __init__(self, file_name: str = None):
+        self.__file_name = None
+        self.file_name = file_name
 
-    DEFAULT_FILE = "book.bin"
-
-    def __init__(self, file: str = None):
-        super().__init__()
-        self.pagination = None
-        if file is None:
-            file = self.DEFAULT_FILE
-        self.file = file
+    @property
+    def file_name(self):
+        return self.__file_name
+    
+    @file_name.setter
+    def file_name(self, file_name:str):
+        self.__file_name = file_name
         self.restore()
-        
-    def add_record(self, record: Record) -> None:
+    
+    def add(self, record: Record) -> None:
         if record.name.value in self.data:
             raise ValueError(f"Record with name {record.name.value} is already exists")
         self.data[record.name.value] = record
+        self.save()
     
     def delete(self, name: str) -> Record:
         if name in self.data:
-            return self.data.pop(name)
+            self.data.pop(name)
+            self.save()
+            return True
+        
 
     def find(self, search: str) -> Record:
         records = []
@@ -165,6 +221,10 @@ class AddressBook(UserDict):
                 records.append(record)
             elif record.find_phone(search, strict=False):
                 records.append(record)
+            elif search in record.email:
+                records.append(record)
+            elif search in str(record.birthday):
+                records.append(record)
 
         return records
     
@@ -173,12 +233,12 @@ class AddressBook(UserDict):
         return Pagination(records, records_per_page)
 
     def save(self):
-        with open(self.file, "wb") as f:
+        with open(self.file_name, "wb") as f:
             dump(self.data, f)
 
     def restore(self):
         try:
-            with open(self.file, "rb") as f:
+            with open(self.file_name, "rb") as f:
                 self.data = load(f)
         except:
             self.data = {}
